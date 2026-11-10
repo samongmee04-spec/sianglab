@@ -78,7 +78,7 @@ button.wide{width:100%}
 
 /* segmented control */
 .seg{display:flex;gap:4px;background:var(--lcd);padding:4px;border-radius:10px;box-shadow:inset 0 2px 4px rgba(0,0,0,.5),0 1px 0 #fff}
-.seg button{flex:1;background:transparent;border:0;box-shadow:none;color:var(--lcd-text);text-shadow:none;padding:8px 6px;font-size:.86rem;min-height:38px;border-radius:7px}
+.seg button{flex:1;background:transparent;border:0;box-shadow:none;color:var(--lcd-text);text-shadow:none;padding:6px 4px;font-size:.82rem;line-height:1.2;min-height:38px;border-radius:7px}
 .seg button[aria-selected="true"]{background:linear-gradient(180deg,#fdfdfd,#d6d9da);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.4)}
 
 /* LCD readouts */
@@ -143,9 +143,12 @@ button.wide{width:100%}
 .trk{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:10px 12px;background:var(--paper);border:1px solid var(--edge);border-radius:10px}
 .trk .sw{width:12px;height:100%;min-height:40px;border-radius:3px;grid-row:1/3}
 .trk .nm{display:flex;justify-content:space-between;gap:8px;align-items:center;grid-column:2/4}
-.trk .nm b{font-family:var(--f-display);font-weight:600}
+.trk .nm b{font-family:var(--f-display);font-weight:600;white-space:nowrap;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .trk .ms{display:flex;gap:6px}
 .trk .ms button{min-height:34px;padding:4px 10px;font-size:.78rem}
+.trk .ms .del.confirm{background:linear-gradient(#f06a5e,var(--hot));color:#fff;text-shadow:none;border-color:#b5342a}
+.trk .nudge{grid-column:2/4;display:flex;flex-direction:column;gap:0}
+.trk .nudge .ch span{font-weight:500;font-size:.82rem;color:var(--muted)}
 .trk .sl{grid-column:2/4}
 .pillrow{display:flex;gap:6px;flex-wrap:wrap}
 .pill{font-family:var(--f-mono);font-size:.72rem;padding:3px 8px;border-radius:20px;background:var(--lcd);color:var(--led-hi);white-space:nowrap}
@@ -314,12 +317,12 @@ input[type=text]{flex:1;min-width:0;font:inherit;padding:9px 12px;border-radius:
         <button type="button" role="tab" data-seg="sep" aria-selected="true">แยกแทร็ก</button>
         <button type="button" role="tab" data-seg="key" aria-selected="false">คีย์ · ความเร็ว</button>
         <button type="button" role="tab" data-seg="voice" aria-selected="false">แปลงเสียง</button>
+        <button type="button" role="tab" data-seg="dub" aria-selected="false">ร้องทับ</button>
       </div>
       <div class="plate" data-segpane="sep">
         <div class="spread"><h2>แยกเสียงร้องออกจากดนตรี</h2><button type="button" class="led" id="sepBtn" aria-pressed="false">ปิดอยู่</button></div>
         <p class="note">ใช้ได้กับเพลงสเตอริโอที่เสียงร้องอยู่ตรงกลาง (เพลงจากสตูดิโอส่วนใหญ่) คลิปที่อัดด้วยไมค์ตัวเดียวแยกไม่ได้</p>
         <div id="sepCtl"></div>
-        <div id="mixer" class="page" style="gap:8px"></div>
       </div>
       <div class="plate" data-segpane="key" hidden>
         <h2>คีย์และความเร็ว</h2>
@@ -331,6 +334,27 @@ input[type=text]{flex:1;min-width:0;font:inherit;padding:9px 12px;border-radius:
         <div class="voices" id="voices"></div>
         <div id="voiceCtl"></div>
         <p class="note" id="voiceNote">ถ้ายังไม่ได้แยกแทร็ก จะแปลงทั้งเพลงรวมดนตรีด้วย</p>
+      </div>
+      <div class="plate" data-segpane="dub" hidden>
+        <h2>ร้องทับ เพิ่มแทร็กใหม่</h2>
+        <p class="note">เพลงหรือแทร็กที่มีอยู่จะเล่นเป็นไกด์ แล้วคุณร้องตาม เสียงที่อัดได้เป็นแทร็กใหม่ อัดซ้อนได้เรื่อยๆ ใส่หูฟังก่อนอัด เสียงเพลงจะได้ไม่เข้าไมค์</p>
+        <div class="recdeck">
+          <div class="clock" id="dubClock">0:00.0</div>
+          <button type="button" class="recbtn" id="dubBtn" aria-label="เริ่มอัดทับ"><span></span></button>
+          <div class="levelbar" aria-label="ระดับเสียงไมค์"><i id="dubLevel"></i></div>
+          <p class="note" id="dubNote">กดปุ่มแดงเพื่อเริ่ม</p>
+        </div>
+        <div class="row">
+          <button type="button" class="led" id="dubFrom" aria-pressed="true">เริ่มจากต้นเพลง</button>
+          <button type="button" class="led" id="dubCount" aria-pressed="true">นับ 1 ห้องก่อน</button>
+          <button type="button" class="led" id="dubClick" aria-pressed="false">เมโทรนอม</button>
+        </div>
+        <div id="dubCtl"></div>
+        <p class="note">ถ้าแก้ตัดต่อ ความเร็ว หรือแยกแทร็กใหม่ทีหลัง แทร็กที่อัดไว้จะไม่ขยับตาม ควรตั้งส่วนอื่นให้เสร็จก่อนอัดทับ</p>
+      </div>
+      <div class="plate" id="mixPlate" hidden>
+        <h2>มิกซ์แทร็ก</h2>
+        <div id="mixer" class="page" style="gap:8px"></div>
       </div>
       <div class="plate">
         <div class="spread"><span class="pill" id="trkState">ยังไม่มีการเปลี่ยนแปลง</span><span class="note" id="trkPct"></span></div>
@@ -449,7 +473,7 @@ input[type=text]{flex:1;min-width:0;font:inherit;padding:9px 12px;border-radius:
     <section class="gsec" data-g="edit"><h3><span class="lcd">ขั้น 2</span>ตัดต่อ</h3>
       <ul><li>จุดเริ่ม / จุดจบ: ส่วนที่ตัดทิ้งเป็นสีจางในรูปคลื่น</li><li>เฟดเข้า / เฟดออก: ค่อยๆ ดังขึ้นตอนต้น ค่อยๆ เบาลงตอนจบ</li><li>ปรับระดับเสียงให้เต็ม: ยกทั้งไฟล์ให้ดังเต็มที่โดยไม่แตก</li></ul></section>
     <section class="gsec" data-g="tracks"><h3><span class="lcd">ขั้น 3</span>แทร็ก</h3>
-      <ul><li>แยกแทร็ก: ได้เสียงร้องและดนตรีแยกกัน ปรับดัง ปิด (M) หรือฟังเดี่ยว (S) ได้ ความแรงยิ่งมากเสียงร้องยิ่งสะอาดแต่บางลง</li><li>คีย์: +1 คือสูงขึ้นครึ่งเสียง ใช้ปรับให้เข้ากับช่วงเสียงร้อง</li><li>ความเร็ว: ช้าลงเพื่อซ้อม เสียงไม่เพี้ยน</li><li>แปลงเสียง: ผู้ชาย ผู้หญิง เด็ก ยักษ์ หุ่นยนต์ ปรับละเอียดได้ด้วยระดับเสียงและโทนเสียง</li><li>ตั้งค่าแล้วกด "ประมวลผลแทร็ก" เพลง 3 นาทีใช้เวลาราว 5–30 วินาที</li></ul></section>
+      <ul><li>แยกแทร็ก: ได้เสียงร้องและดนตรีแยกกัน ปรับดัง ปิด (M) หรือฟังเดี่ยว (S) ได้ ความแรงยิ่งมากเสียงร้องยิ่งสะอาดแต่บางลง</li><li>คีย์: +1 คือสูงขึ้นครึ่งเสียง ใช้ปรับให้เข้ากับช่วงเสียงร้อง</li><li>ความเร็ว: ช้าลงเพื่อซ้อม เสียงไม่เพี้ยน</li><li>แปลงเสียง: ผู้ชาย ผู้หญิง เด็ก ยักษ์ หุ่นยนต์ ปรับละเอียดได้ด้วยระดับเสียงและโทนเสียง</li><li>ร้องทับ: เพลงที่มีเล่นเป็นไกด์ แล้วร้องตาม ได้แทร็กใหม่ อัดซ้อนกี่ชั้นก็ได้ แต่ละแทร็กปรับดัง ปิด ฟังเดี่ยว หรือลบได้ในกล่องมิกซ์แทร็ก</li><li>ถ้าเสียงที่อัดช้าหรือเร็วกว่าเพลงเล็กน้อย ใช้แถบ "ขยับเวลา" ของแทร็กนั้นเลื่อนให้ตรงจังหวะ ถ้าเป็นทุกครั้ง ปรับ "ชดเชยดีเลย์" ในหน้าร้องทับครั้งเดียว</li><li>ตั้งค่าแล้วกด "ประมวลผลแทร็ก" เพลง 3 นาทีใช้เวลาราว 5–30 วินาที</li></ul></section>
     <section class="gsec" data-g="tone"><h3><span class="lcd">ขั้น 4</span>ปรับเสียง</h3>
       <ul><li>เริ่มจากค่าสำเร็จรูป แล้วค่อยปรับต่อ บันทึกเป็นเซตของตัวเองได้ เซตเก็บในเครื่องนี้ กด "สำรองเซตเป็นไฟล์" กันหาย</li><li>ตัดเสียงอื้อ: ชาย 70–100 · หญิง/พูด 100–150 Hz</li><li>ลดเสียงซ่า: 4–8 dB ถ้าซ่ามากใช้ 10–15</li><li>เงียบช่วงที่ไม่มีเสียง: เพลง 20–40% · พูด 40–60%</li><li>ทำให้เสียงแน่น: ร้อง 30–50% · พูด 50–70%</li><li>ดังขึ้น: ดูมิเตอร์ขวาล่าง เขียวถึงเหลือง แตะแดงบ้างได้</li><li>ถ้าแยกแทร็กแล้ว ขั้นนี้ปรับเฉพาะเสียงร้อง ดนตรีไม่ถูกแตะ</li></ul></section>
     <section class="gsec" data-g="eqhow"><h3>วิธีใช้อีควอไลเซอร์</h3>
@@ -714,6 +738,13 @@ const gateCode=`class G extends AudioWorkletProcessor{
   return true}}
 registerProcessor('gate-x',G);`;
 const gateURL=URL.createObjectURL(new Blob([gateCode],{type:'application/javascript'}));
+const recCode=`class R extends AudioWorkletProcessor{constructor(){super();this.on=true;this.buf=new Float32Array(4096);this.n=0;this.f0=0;
+ this.port.onmessage=e=>{if(e.data==='stop'){if(this.n)this.port.postMessage({f:this.f0,d:this.buf.slice(0,this.n)});this.n=0;this.on=false;this.port.postMessage('end')}}}
+ process(ins){if(!this.on)return false;const i=ins[0];if(!i||!i[0])return true;const a=i[0];if(this.n===0)this.f0=currentFrame;
+  this.buf.set(a,this.n);this.n+=a.length;if(this.n>=4096){this.port.postMessage({f:this.f0,d:this.buf.slice(0,this.n)});this.n=0}return true}}
+registerProcessor('rec-x',R);`;
+const recURL=URL.createObjectURL(new Blob([recCode],{type:'application/javascript'}));
+let recOK=false;
 function buildChain(c,withGate){
   const n={};
   n.hp=c.createBiquadFilter();n.hp.type='highpass';n.hp.Q.value=0.8;
@@ -742,6 +773,7 @@ const split=ctx.createChannelSplitter(2),anL=ctx.createAnalyser(),anR=ctx.create
 const spec=ctx.createAnalyser();spec.fftSize=4096;spec.smoothingTimeConstant=0.8;
 const ready=(async()=>{
   try{await ctx.audioWorklet.addModule(gateURL);gateOK=true}catch(e){gateOK=false}
+  try{await ctx.audioWorklet.addModule(recURL);recOK=true}catch(e){recOK=false}
   RT=buildChain(ctx,gateOK);applyTone(RT,T);
   gProc.connect(RT.input);RT.output.connect(wet);wet.connect(sum);gProc.connect(dryBus);dryBus.connect(sum);gMusic.connect(sum);
   sum.connect(limiter);limiter.connect(master);master.connect(ctx.destination);master.connect(spec);master.connect(split);split.connect(anL,0);split.connect(anR,1);
@@ -760,17 +792,22 @@ function isMonoish(p){if(p.ch.length<2)return true;const L=p.ch[0],R=p.ch[1];let
 const PL={playing:false,off:0,t0:0,srcs:[]};
 const vid=$('vid');
 function current(){return processed||(edited?{sr:edited.sr,len:pcmLen(edited),sep:false,speed:1,tracks:[{id:'mix',label:'เสียงทั้งหมด',pcm:edited}]}:null)}
-function curDur(){const P=current();return P?P.len/P.sr:0}
-function plPos(){return PL.playing?PL.off+(ctx.currentTime-PL.t0):PL.off}
+let takes=[],takeN=0,mixVer=0;
+const takeOff=t=>t.base+t.nudge/1000;
+function curDur(){const P=current();let d=P?P.len/P.sr:0;takes.forEach(t=>{d=Math.max(d,takeOff(t)+pcmLen(t.pcm)/t.pcm.sr)});return d}
+function plPos(){return PL.playing?Math.max(PL.off,PL.off+(ctx.currentTime-PL.t0)):PL.off}
 function stopSrcs(){PL.srcs.forEach(s=>{try{s.onended=null;s.stop()}catch(e){}});PL.srcs=[]}
-async function plPlay(){
+async function plPlay(at){
   const P=current();if(!P)return;await ready;await ctx.resume();
-  const d=P.len/P.sr;if(PL.off>=d-0.05)PL.off=0;
-  updateMixGains();
-  PL.srcs=P.tracks.map(t=>{if(!t.ab)t.ab=toAB(ctx,t.pcm);const s=ctx.createBufferSource();s.buffer=t.ab;s.connect(t.id==='music'?gMusic:gProc);s.start(0,PL.off);return s});
-  PL.t0=ctx.currentTime;PL.playing=true;
-  PL.srcs[0].onended=()=>{if(PL.playing){PL.playing=false;PL.off=0;stopSrcs();vid.pause();paintPlay()}};
-  syncVideo(true);paintPlay();
+  const d=curDur();if(PL.off>=d-0.05)PL.off=0;
+  updateMixGains();const t0=at||ctx.currentTime;
+  PL.srcs=[];
+  P.tracks.forEach(t=>{if(!t.ab)t.ab=toAB(ctx,t.pcm);if(PL.off>=t.ab.duration)return;const s=ctx.createBufferSource();s.buffer=t.ab;s.connect(t.id==='music'?gMusic:gProc);s.start(t0,PL.off);PL.srcs.push(s)});
+  takes.forEach(t=>{if(!t.ab)t.ab=toAB(ctx,t.pcm);const rel=PL.off-takeOff(t);if(rel>=t.ab.duration)return;const s=ctx.createBufferSource();s.buffer=t.ab;s.connect(t.g);
+    if(rel>=0)s.start(t0,rel);else s.start(t0-rel);PL.srcs.push(s)});
+  PL.t0=t0;PL.playing=true;
+  if(at){setTimeout(()=>{if(PL.playing)syncVideo(true)},Math.max(0,(at-ctx.currentTime)*1000))}else syncVideo(true);
+  paintPlay();
 }
 function plPause(){if(!PL.playing)return;PL.off=plPos();stopSrcs();PL.playing=false;vid.pause();paintPlay()}
 function plStop(){if(PL.playing){stopSrcs();PL.playing=false;vid.pause()}PL.off=Math.min(PL.off,curDur());paintPlay()}
@@ -786,8 +823,10 @@ const seekSl=makeSlider($('seek'),{label:'ตำแหน่งเล่น',min
 let abOn=true;
 $('abBtn').onclick=()=>{abOn=!abOn;const t=ctx.currentTime;wet.gain.setTargetAtTime(abOn?1:0,t,0.02);dryBus.gain.setTargetAtTime(abOn?0:1,t,0.02);
   $('abBtn').setAttribute('aria-pressed',String(!abOn));$('abBtn').firstChild.textContent=abOn?'หลังปรับ':'ก่อนปรับ'};
-function effGain(id){const P=current();if(!P)return 1;const ids=P.tracks.map(t=>t.id);const any=ids.some(i=>M[i].solo);const m=M[id];if(m.mute)return 0;if(any&&!m.solo)return 0;return m.vol/100}
-function updateMixGains(){const P=current();if(!P)return;const proc=P.sep?'vocal':'mix';gProc.gain.value=effGain(proc);gMusic.gain.value=P.sep?effGain('music'):0}
+function anySolo(){const P=current();return (P?P.tracks.some(t=>M[t.id].solo):false)||takes.some(t=>t.solo)}
+function effGain(id){const m=M[id];if(m.mute)return 0;if(anySolo()&&!m.solo)return 0;return m.vol/100}
+function takeGain(t){if(t.mute)return 0;if(anySolo()&&!t.solo)return 0;return t.vol/100}
+function updateMixGains(){const P=current();if(!P)return;const proc=P.sep?'vocal':'mix';gProc.gain.value=effGain(proc);gMusic.gain.value=P.sep?effGain('music'):0;takes.forEach(t=>t.g.gain.value=takeGain(t))}
 
 /* ---------- navigation ---------- */
 const STEPS=['load','edit','tracks','tone','export'];
@@ -795,6 +834,7 @@ const TITLES={load:'นำเข้าไฟล์',rec:'อัดเสีย�
 let page='load';
 function go(p){
   if(page==='rec'&&p!=='rec')stopMetro();
+  if(OD.rec&&p!=='tracks')stopDub();
   page=p;$$('.page[data-page]').forEach(s=>s.hidden=s.dataset.page!==p);$$('.nofile').forEach(b=>b.hidden=!!orig);
   const idx=STEPS.indexOf(p==='rec'?'load':p);
   $('stepTag').textContent='ขั้น '+(idx+1)+'/5';$('pageTitle').textContent=TITLES[p];
@@ -841,6 +881,7 @@ function setSource(pcm,name,isV,info){
   E={start:0,end:d,fadeIn:E.fadeIn,fadeOut:E.fadeOut,norm:E.norm};
   ['mix','vocal','music'].forEach(k=>M[k]={vol:100,mute:false,solo:false});
   origPeaks=peaksOf(pcm,1200);
+  takes.forEach(t=>{try{t.g.disconnect()}catch(e){}});takes=[];takeN=0;mixVer++;
   $('fname').textContent=info;drop.hidden=true;$('loadWave').hidden=isV;
   syncEditControls();syncTrackControls();recomputeEdited();$$('.nofile').forEach(b=>b.hidden=true);
   $('loadNext').disabled=false;$('playBtn').disabled=false;$$('.tab').forEach(b=>b.removeAttribute('aria-disabled'));
@@ -875,7 +916,7 @@ const beatsEl=$('beats');
 function paintBeats(active){beatsEl.innerHTML='';for(let i=0;i<metro.beats;i++){const d=document.createElement('i');if(i===active){d.className='on'+(i===0?' accent':'')}beatsEl.appendChild(d)}}
 paintBeats(-1);
 const mc=$('metroCtl');
-makeSliderRow(mc,{label:'ความเร็วจังหวะ',min:40,max:220,step:1,value:90,def:90,fmt:v=>v+' BPM',onInput:v=>metro.bpm=v});
+const recBpm=makeSliderRow(mc,{label:'ความเร็วจังหวะ',min:40,max:220,step:1,value:90,def:90,fmt:v=>v+' BPM',onInput:v=>{metro.bpm=v;if(typeof dubBpm!=='undefined')dubBpm.set(v)}});
 makeSliderRow(mc,{label:'เสียงคลิก',min:0,max:100,step:1,value:70,def:70,fmt:v=>v+'%',onInput:v=>metro.vol=v});
 function makeSliderRow(p,o){return ctlRow(p,o)}
 $('meterSig').addEventListener('click',e=>{const b=e.target.closest('[data-beats]');if(!b)return;metro.beats=+b.dataset.beats;pressGroup($('meterSig'),'data-beats',metro.beats);paintBeats(-1)});
@@ -990,23 +1031,88 @@ function paintTracks(){
   if(!orig&&!isDefaultK()){st.textContent='ตั้งค่าไว้แล้ว จะประมวลผลเมื่อมีไฟล์';st.className='pill'}
   paintMixer();
 }
-let mixFor=null;
+let mixFor=null,mixSeen=-1;
+function trkRow(box,o){
+  const d=document.createElement('div');d.className='trk';
+  d.innerHTML='<span class="sw"></span><div class="nm"><b></b><output class="lcd"></output><span class="ms"><button type="button" class="led" data-m="mute">M</button><button type="button" class="led" data-m="solo">S</button></span></div><div></div>';
+  d.querySelector('.sw').style.background=o.color;d.querySelector('b').textContent=o.label;
+  const st=o.state,bm=d.querySelector('[data-m=mute]'),bs=d.querySelector('[data-m=solo]');
+  bm.setAttribute('aria-pressed',String(st.mute));bs.setAttribute('aria-pressed',String(st.solo));
+  bm.setAttribute('aria-label','ปิดเสียง '+o.label);bs.setAttribute('aria-label','ฟังเดี่ยว '+o.label);
+  bm.onclick=()=>{st.mute=!st.mute;bm.setAttribute('aria-pressed',String(st.mute));updateMixGains()};
+  bs.onclick=()=>{st.solo=!st.solo;bs.setAttribute('aria-pressed',String(st.solo));updateMixGains()};
+  box.appendChild(d);
+  makeSlider(d.children[2],{label:'ความดัง '+o.label,min:0,max:150,step:5,value:st.vol,def:100,fmt:v=>v+'%',out:d.querySelector('output'),onInput:v=>{st.vol=v;updateMixGains()}});
+  return d;
+}
 function paintMixer(){
-  const box=$('mixer');const P=current();const key=P&&P.sep?P:null;if(key===mixFor)return;mixFor=key;box.innerHTML='';if(!key)return;
-  P.tracks.forEach(t=>{const d=document.createElement('div');d.className='trk';
-    d.innerHTML='<span class="sw"></span><div class="nm"><b></b><span class="ms"><button type="button" class="led" data-m="mute">M</button><button type="button" class="led" data-m="solo">S</button></span></div><div></div>';
-    d.querySelector('.sw').style.background=t.id==='vocal'?'var(--vocal)':'var(--music)';d.querySelector('b').textContent=t.label;
-    const m=M[t.id];
-    const bm=d.querySelector('[data-m=mute]'),bs=d.querySelector('[data-m=solo]');bm.setAttribute('aria-pressed',String(m.mute));bs.setAttribute('aria-pressed',String(m.solo));
-    bm.setAttribute('aria-label','ปิดเสียง '+t.label);bs.setAttribute('aria-label','ฟังเดี่ยว '+t.label);
-    bm.onclick=()=>{m.mute=!m.mute;bm.setAttribute('aria-pressed',String(m.mute));updateMixGains()};
-    bs.onclick=()=>{m.solo=!m.solo;bs.setAttribute('aria-pressed',String(m.solo));updateMixGains()};
-    box.appendChild(d);
-    const out=document.createElement('output');out.className='lcd';d.querySelector('.nm').insertBefore(out,d.querySelector('.ms'));
-    makeSlider(d.lastElementChild,{label:'ความดัง '+t.label,min:0,max:150,step:5,value:m.vol,def:100,fmt:v=>v+'%',out,onInput:v=>{m.vol=v;updateMixGains()}});
+  const box=$('mixer');const P=current();const show=!!P&&(P.sep||takes.length>0);
+  $('mixPlate').hidden=!show;
+  const key=show?P:null;if(key===mixFor&&mixVer===mixSeen)return;mixFor=key;mixSeen=mixVer;box.innerHTML='';if(!key)return;
+  P.tracks.forEach(t=>trkRow(box,{label:t.id==='mix'?'เพลงหลัก':t.label,color:t.id==='vocal'?'var(--vocal)':t.id==='music'?'var(--music)':'var(--led)',state:M[t.id]}));
+  takes.forEach(t=>{const d=trkRow(box,{label:t.label,color:'#d98fb0',state:t});
+    const del=document.createElement('button');del.type='button';del.className='del';del.textContent='ลบ';del.setAttribute('aria-label','ลบ '+t.label);
+    del.onclick=()=>{if(!del.classList.contains('confirm')){del.classList.add('confirm');del.textContent='ลบ?';setTimeout(()=>{del.classList.remove('confirm');del.textContent='ลบ'},3000);return}
+      plPause();try{t.g.disconnect()}catch(e){}takes=takes.filter(x=>x!==t);mixVer++;paintTracks();toast('ลบ '+t.label+' แล้ว')};
+    d.querySelector('.ms').appendChild(del);
+    const nz=document.createElement('div');nz.className='nudge';d.appendChild(nz);
+    ctlRow(nz,{label:'ขยับเวลา',min:-400,max:400,step:5,value:t.nudge,def:t.nudge0,bipolar:true,fmt:v=>v===0?'0 ms':(v>0?'ช้าลง ':'เร็วขึ้น ')+Math.abs(v)+' ms',
+      onInput:v=>{t.nudge=v},onChange:()=>{if(PL.playing)plSeek(plPos())}});
   });
 }
 $('procBtn').onclick=()=>processTracks();
+/* overdub: record a new track while the current mix plays as a guide */
+const OD={from0:true,count:true,click:false,lat:null,rec:false,stream:null,node:null,mic:null,an:null,chunks:[],T0:0,pos0:0,raf:0};
+try{const v=+localStorage.getItem('sianglab.dublat');if(v>=0&&v<=400&&localStorage.getItem('sianglab.dublat')!==null)OD.lat=v}catch(e){}
+const dubBpm=ctlRow($('dubCtl'),{label:'ความเร็วเมโทรนอม',min:40,max:220,step:1,value:metro.bpm,def:90,fmt:v=>v+' BPM',onInput:v=>{metro.bpm=v;recBpm.set(v)}});
+const dubLat=ctlRow($('dubCtl'),{label:'ชดเชยดีเลย์',min:0,max:400,step:5,value:OD.lat==null?120:OD.lat,def:120,fmt:v=>v+' ms',hint:'ถ้าเสียงที่อัดช้ากว่าเพลงทุกครั้ง ให้เพิ่มค่านี้ · เร็วกว่าให้ลด',onInput:v=>{OD.lat=v;try{localStorage.setItem('sianglab.dublat',String(v))}catch(e){}}});
+ready.then(()=>{if(OD.lat==null){const est=Math.round(((ctx.outputLatency||0)+(ctx.baseLatency||0))*1000/5)*5+40;OD.lat=Math.max(0,Math.min(400,est));dubLat.set(OD.lat)}});
+function tog(id,key,on,off){const b=$(id);b.onclick=()=>{OD[key]=!OD[key];b.setAttribute('aria-pressed',String(OD[key]));if(on)b.lastChild.textContent=OD[key]?on:off}}
+tog('dubFrom','from0','เริ่มจากต้นเพลง','เริ่มจากตำแหน่งที่หยุดไว้');tog('dubCount','count');tog('dubClick','click');
+function dubMsg(t,err){const n=$('dubNote');n.textContent=t;n.className='note'+(err?' err':'')}
+$('dubBtn').onclick=()=>OD.rec?stopDub():startDub();
+async function startDub(){
+  if(!orig){toast('นำเข้าไฟล์หรืออัดแทร็กแรกก่อน');return}
+  if(busy||exporting)return;
+  await ready;await ctx.resume();
+  if(stale()){dubMsg('กำลังประมวลผลแทร็กก่อนอัด…');const ok=await processTracks();if(!ok)return}
+  if(!recOK||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){dubMsg('อัดเสียงในหน้านี้ไม่ได้ ใช้แอป SiangLab บน GitHub แทน',true);return}
+  try{OD.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}})}
+  catch(e){dubMsg('ไมค์ใช้ไม่ได้ในหน้านี้ ถ้าเปิดผ่านลิงก์ claude.ai ให้ใช้แอป SiangLab บน GitHub แทน',true);return}
+  plPause();takeStop&&takeStop();
+  OD.pos0=OD.from0?0:Math.min(PL.off,curDur());PL.off=OD.pos0;
+  OD.chunks=[];OD.mic=ctx.createMediaStreamSource(OD.stream);OD.node=new AudioWorkletNode(ctx,'rec-x');OD.an=ctx.createAnalyser();OD.an.fftSize=1024;
+  const sink=ctx.createGain();sink.gain.value=0;OD.mic.connect(OD.node);OD.mic.connect(OD.an);OD.node.connect(sink);sink.connect(ctx.destination);OD.sink=sink;
+  OD.node.port.onmessage=e=>{if(e.data==='end'){OD.ended&&OD.ended();return}OD.chunks.push(e.data)};
+  const spb=60/metro.bpm,lead=OD.count?spb*metro.beats:0,start=ctx.currentTime+0.25;
+  OD.T0=start+lead;
+  if(OD.count||OD.click)startMetro(start,OD.click?null:OD.T0);
+  await plPlay(OD.T0);
+  OD.rec=true;$('dubBtn').classList.add('on');$('dubBtn').setAttribute('aria-label','หยุดอัดทับ');$('dubClock').classList.add('rec');
+  dubMsg(OD.count?'นับจังหวะ… แล้วร้องตามเพลงได้เลย':'กำลังอัด ร้องตามเพลงได้เลย');
+  const b=new Float32Array(1024);
+  const tick=()=>{if(!OD.rec)return;const el=ctx.currentTime-OD.T0;$('dubClock').textContent=el<0?'-'+(-el).toFixed(1):fmtT(el);
+    if(el>=0&&$('dubNote').textContent.startsWith('นับ'))dubMsg('กำลังอัด กดปุ่มอีกครั้งเพื่อหยุด');
+    OD.an.getFloatTimeDomainData(b);let m=0;for(let i=0;i<b.length;i++){const a=Math.abs(b[i]);if(a>m)m=a}
+    $('dubLevel').style.width=Math.min(100,Math.max(0,(20*Math.log10(m||1e-6)+60)/60*100))+'%';OD.raf=requestAnimationFrame(tick)};tick();
+}
+async function stopDub(){
+  if(!OD.rec)return;OD.rec=false;cancelAnimationFrame(OD.raf);stopMetro();
+  const endT=ctx.currentTime;
+  await new Promise(r=>{OD.ended=r;OD.node.port.postMessage('stop');setTimeout(r,600)});OD.ended=null;
+  plPause();
+  try{OD.mic.disconnect();OD.node.disconnect();OD.sink.disconnect()}catch(e){}
+  OD.stream.getTracks().forEach(t=>t.stop());OD.stream=null;
+  $('dubBtn').classList.remove('on');$('dubBtn').setAttribute('aria-label','เริ่มอัดทับ');$('dubClock').classList.remove('rec');$('dubLevel').style.width='0';
+  const sr=ctx.sampleRate,F0=Math.round(OD.T0*sr),F1=Math.round(endT*sr),n=F1-F0;
+  if(n<sr*0.3){dubMsg('อัดสั้นเกินไป ลองใหม่อีกครั้ง');return}
+  const out=new Float32Array(n);
+  OD.chunks.forEach(c=>{const o=c.f-F0;for(let i=0;i<c.d.length;i++){const k=o+i;if(k>=0&&k<n)out[k]=c.d[i]}});OD.chunks=[];
+  takeN++;const g=ctx.createGain();g.connect(RT.input);g.connect(dryBus);
+  const t={id:'take'+takeN,label:'เสียงอัด '+takeN,pcm:{sr,ch:[out]},base:OD.pos0,nudge:-OD.lat,nudge0:-OD.lat,vol:100,mute:false,solo:false,g};
+  takes.push(t);mixVer++;PL.off=OD.pos0;updateMixGains();paintTracks();
+  dubMsg('เพิ่ม '+t.label+' แล้ว กดเล่นเพื่อฟัง หรือกดปุ่มแดงอัดชั้นต่อไป');toast('เพิ่ม '+t.label+' แล้ว');
+}
 $('trkNext').onclick=async()=>{if(orig&&stale()){const ok=await processTracks();if(!ok)return}go('tone')};
 function setBusy(v,txt){const b=$('busy');if(v==null){b.hidden=true;return}b.hidden=false;if(txt)$('busyText').textContent=txt;$('busyProg').style.width=Math.round(v*100)+'%'}
 function ringMod(p){const f=48,sr=p.sr;p.ch.forEach(a=>{for(let i=0;i<a.length;i++){const m=Math.sin(2*Math.PI*f*i/sr);a[i]=a[i]*(0.35+0.65*m)}})}
@@ -1117,13 +1223,13 @@ async function saveBlob(blob,name){
 $('fmts').addEventListener('click',e=>{const b=e.target.closest('[data-f]');if(!b||b.getAttribute('aria-disabled')==='true')return;X.fmt=b.dataset.f;paintExport()});
 $('kbpsRow').addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b)return;X.kbps=+b.dataset.k;pressGroup($('kbpsRow'),'data-k',X.kbps)});
 function paintExport(){
-  const sepOn=K.sep;
+  const sepOn=K.sep||takes.length>0;
   const vb=$$('[data-f=video]')[0],sb=$$('[data-f=stems]')[0];
   vb.setAttribute('aria-disabled',String(!srcIsVideo));sb.setAttribute('aria-disabled',String(!sepOn));
   if(X.fmt==='video'&&!srcIsVideo)X.fmt='mp3';if(X.fmt==='stems'&&!sepOn)X.fmt='mp3';
   pressGroup($('fmts'),'data-f',X.fmt);$('kbpsRow').hidden=!(X.fmt==='mp3'||X.fmt==='stems');
-  const notes={video:'บันทึกตามความยาวจริงของคลิป ('+fmtT0(curDur())+') อย่าปิดหรือสลับหน้าจอระหว่างบันทึก',mp3:'ได้ไฟล์ MP3 เสียงรวมตามมิกซ์ปัจจุบัน',wav:'ได้ไฟล์ WAV คุณภาพเต็ม ไฟล์ใหญ่กว่า MP3 ราว 7 เท่า',stems:'ได้ 2 ไฟล์ MP3: เสียงร้อง (ผ่านการปรับขั้น 4) และดนตรี'};
-  $('fmtNote').textContent=notes[X.fmt]+(!srcIsVideo?' · วิดีโอเลือกได้เมื่อนำเข้าไฟล์วิดีโอ':'')+(!sepOn?' · แยกแทร็กเลือกได้เมื่อเปิดการแยกในขั้น 3':'');
+  const notes={video:'บันทึกตามความยาวจริงของคลิป ('+fmtT0(curDur())+') อย่าปิดหรือสลับหน้าจอระหว่างบันทึก',mp3:'ได้ไฟล์ MP3 เสียงรวมตามมิกซ์ปัจจุบัน',wav:'ได้ไฟล์ WAV คุณภาพเต็ม ไฟล์ใหญ่กว่า MP3 ราว 7 เท่า',stems:'ได้ไฟล์ MP3 แยกทีละแทร็ก ('+((K.sep?2:1)+takes.length)+' ไฟล์)'};
+  $('fmtNote').textContent=notes[X.fmt]+(!srcIsVideo?' · วิดีโอเลือกได้เมื่อนำเข้าไฟล์วิดีโอ':'')+(!sepOn?' · แยกแทร็กเลือกได้เมื่อแยกเสียงหรือร้องทับในขั้น 3':'');
   $('expBtn').disabled=!orig||exporting;if(!orig){$('expNote').textContent='นำเข้าไฟล์ก่อนจึงจะบันทึกได้'}else if(!exporting&&$('expNote').textContent==='นำเข้าไฟล์ก่อนจึงจะบันทึกได้')$('expNote').textContent='พร้อมบันทึก';
   const ul=$('summary');ul.innerHTML='';
   const vName=(VOICES.find(v=>v[0]===K.voice)||[0,'ปรับเอง'])[1];
@@ -1135,15 +1241,18 @@ function paintExport(){
     ['แปลงเสียง',K.voice==='off'&&K.vSemi===0&&K.vForm===1?'ไม่แปลง':vName+' ('+(K.vSemi>0?'+':'')+K.vSemi+', โทน '+Math.round(K.vForm*100)+'%)'],
     ['ปรับเสียง','อื้อ '+T.hp+' Hz · ซ่า −'+T.hiss+' · แน่น '+T.comp+'% · ดัง +'+T.gain+' dB']
   ];
+  if(takes.length)rows.push(['ร้องทับ',takes.length+' แทร็ก']);
   if(stale())rows.push(['หมายเหตุ','จะประมวลผลแทร็กใหม่ก่อนบันทึก']);
   rows.forEach(([a,b])=>{const li=document.createElement('li');li.innerHTML='<span></span><span></span>';li.children[0].textContent=a;li.children[1].textContent=b;ul.appendChild(li)});
 }
 async function renderOffline(only){
-  const P=current(),oc=new OfflineAudioContext(2,P.len,P.sr);
+  const P=current(),oc=new OfflineAudioContext(2,Math.max(1,Math.ceil(curDur()*P.sr)),P.sr);
   let gok=false;if(gateOK){try{await oc.audioWorklet.addModule(gateURL);gok=true}catch(e){}}
   const ch=buildChain(oc,gok);applyTone(ch,T);const s=oc.createGain(),lim=makeLimiter(oc);ch.output.connect(s);s.connect(lim);lim.connect(oc.destination);
   P.tracks.forEach(t=>{if(only&&t.id!==only)return;const src=oc.createBufferSource();src.buffer=toAB(oc,t.pcm);const g=oc.createGain();
     g.gain.value=only?M[t.id].vol/100:effGain(t.id);src.connect(g);g.connect(t.id==='music'?s:ch.input);src.start(0)});
+  takes.forEach(t=>{if(only&&t.id!==only)return;const src=oc.createBufferSource();src.buffer=toAB(oc,t.pcm);const g=oc.createGain();g.gain.value=only?t.vol/100:takeGain(t);
+    src.connect(g);g.connect(ch.input);const off=takeOff(t);if(off>=0)src.start(off);else src.start(0,-off)});
   return oc.startRendering();
 }
 async function encodeMp3(ab,kbps,onp){
@@ -1169,11 +1278,12 @@ $('expBtn').onclick=async()=>{
   try{
     if(stale()){expUI(0.02,'กำลังประมวลผลแทร็กก่อน…');const ok=await processTracks();if(!ok)throw new Error('skip')}
     if(X.fmt==='stems'){
-      const P=current();if(!P.sep)throw new Error('nostem');
-      for(let i=0;i<P.tracks.length;i++){const t=P.tracks[i];expUI(i/P.tracks.length,'กำลังทำไฟล์'+t.label+'…');
-        const ab=await renderOffline(t.id);const blob=await encodeMp3(ab,X.kbps,p=>expUI((i+p)/P.tracks.length,'กำลังทำไฟล์'+t.label+' '+Math.round(p*100)+'%'));
-        if(cancelExp)throw new Error('cancel');const r=await saveBlob(blob,base+'-'+(t.id==='vocal'?'เสียงร้อง':'ดนตรี')+'.mp3');if(r==='fail')throw new Error('skip')}
-      expUI(1,'บันทึกแยกแทร็กแล้ว 2 ไฟล์');
+      const P=current();const list=[...P.tracks.map(t=>({id:t.id,label:t.id==='vocal'?'เสียงร้อง':t.id==='music'?'ดนตรี':'เพลงหลัก'})),...takes.map(t=>({id:t.id,label:t.label}))];
+      if(list.length<2)throw new Error('nostem');
+      for(let i=0;i<list.length;i++){const t=list[i];expUI(i/list.length,'กำลังทำไฟล์'+t.label+'…');
+        const ab=await renderOffline(t.id);const blob=await encodeMp3(ab,X.kbps,p=>expUI((i+p)/list.length,'กำลังทำไฟล์'+t.label+' '+Math.round(p*100)+'%'));
+        if(cancelExp)throw new Error('cancel');const r=await saveBlob(blob,base+'-'+t.label+'.mp3');if(r==='fail')throw new Error('skip')}
+      expUI(1,'บันทึกแยกแทร็กแล้ว '+list.length+' ไฟล์');
     }else if(X.fmt==='mp3'||X.fmt==='wav'){
       expUI(0.05,'กำลังมิกซ์เสียง…');const ab=await renderOffline(null);if(cancelExp)throw new Error('cancel');
       let blob,ext=X.fmt;
@@ -1232,6 +1342,8 @@ function peak(an){an.getFloatTimeDomainData(tb);let m=0;for(let i=0;i<tb.length;
 let lastDur=-1,lastShown=-1,lastTxt='',metersOn=false;
 function loop(){
   const d=curDur();if(d!==lastDur){seekSl.range(0,Math.max(0.1,d));$('tDur').textContent=fmtT0(d);lastDur=d}
+  if(PL.playing&&!OD.rec&&plPos()>=d-0.02){stopSrcs();PL.playing=false;PL.off=0;vid.pause();paintPlay()}
+  if(OD.rec&&PL.playing&&plPos()>=d){/* keep recording past the end of the guide */}
   const p=Math.min(plPos(),d);
   if(!seekSl.el.classList.contains('active')){const q=Math.round(p*10)/10;if(q!==lastShown){seekSl.set(q);lastShown=q}const t=fmtT0(p);if(t!==lastTxt){$('tNow').textContent=t;lastTxt=t}}
   if(PL.playing){metersOn=true;[[anL,$('mL')],[anR,$('mR')]].forEach(([an,el])=>{const db=20*Math.log10(peak(an)||1e-6);el.style.clipPath='inset('+(100-Math.max(0,Math.min(100,(db+60)/60*100)))+'% 0 0 0)'});
