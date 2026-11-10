@@ -1,5 +1,5 @@
 // SiangLab offline cache: network first, fall back to the saved copy
-const CACHE='sianglab-v1';
+const CACHE='sianglab-v2';
 const CORE=['./','./studio/','./manifest.webmanifest','./icon-192.png','./icon-512.png',
  'https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>Promise.all(CORE.map(u=>c.add(u).catch(()=>{})))));self.skipWaiting()});
