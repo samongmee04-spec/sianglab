@@ -91,7 +91,7 @@ button.wide{width:100%}
 .ch span{font-weight:600}
 .hint{font-size:.8rem;color:var(--muted)}
 .sl{display:flex;align-items:center;min-height:40px}
-.sl input{-webkit-appearance:none;appearance:none;width:100%;height:12px;margin:8px 0;border-radius:6px;cursor:pointer;
+.sl input{-webkit-appearance:none;appearance:none;touch-action:pan-y;width:100%;height:12px;margin:8px 0;border-radius:6px;cursor:pointer;
   background:linear-gradient(to right,var(--groove) 0 var(--a,0%),var(--led) var(--a,0%) var(--b,50%),var(--groove) var(--b,50%));
   box-shadow:inset 0 2px 3px rgba(0,0,0,.6),0 1px 0 #fff}
 .sl input::-webkit-slider-thumb{-webkit-appearance:none;width:32px;height:24px;border-radius:6px;border:1px solid #8d9295;
@@ -849,15 +849,19 @@ function setSource(pcm,name,isV,info){
   drawLoadWave();
 }
 $('loadNext').onclick=()=>go('edit');
+const _raf={};function soon(k,fn){if(_raf[k])return;_raf[k]=requestAnimationFrame(()=>{_raf[k]=0;fn()})}
 function drawWave(cv,peaks,opts){
-  const r=cv.getBoundingClientRect(),dpr=devicePixelRatio||1;if(!r.width)return;cv.width=r.width*dpr;cv.height=r.height*dpr;
-  const c=cv.getContext('2d'),W=cv.width,H=cv.height;c.clearRect(0,0,W,H);
-  c.strokeStyle='#2d3639';c.lineWidth=dpr;c.beginPath();c.moveTo(0,H/2);c.lineTo(W,H/2);c.stroke();
-  if(!peaks)return;const n=peaks.mn.length;
-  for(let x=0;x<W;x++){const i=Math.floor(x/W*n),f=x/W;let col='#8cc63f';
-    if(opts&&(f<opts.a||f>opts.b))col='#3a4a3e';
-    c.fillStyle=col;const y1=H/2-peaks.mx[i]*H/2*0.95,y2=H/2-peaks.mn[i]*H/2*0.95;c.fillRect(x,y1,1,Math.max(1,y2-y1))}
-  if(opts){c.fillStyle='rgba(24,29,31,.55)';c.fillRect(0,0,opts.a*W,H);c.fillRect(opts.b*W,0,W-opts.b*W,H);
+  const r=cv.getBoundingClientRect(),dpr=devicePixelRatio||1;if(!r.width)return;
+  const W=Math.round(r.width*dpr),H=Math.round(r.height*dpr);if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H}
+  const c=cv.getContext('2d');
+  if(!cv._bmp||cv._bmp.width!==W||cv._bmp.height!==H||cv._peaks!==peaks){
+    const off=document.createElement('canvas');off.width=W;off.height=H;const o=off.getContext('2d');
+    o.fillStyle='#181d1f';o.fillRect(0,0,W,H);o.strokeStyle='#2d3639';o.lineWidth=dpr;o.beginPath();o.moveTo(0,H/2);o.lineTo(W,H/2);o.stroke();
+    if(peaks){const n=peaks.mn.length;o.fillStyle='#8cc63f';for(let x=0;x<W;x++){const i=Math.floor(x/W*n);const y1=H/2-peaks.mx[i]*H/2*0.95,y2=H/2-peaks.mn[i]*H/2*0.95;o.fillRect(x,y1,1,Math.max(1,y2-y1))}}
+    cv._bmp=off;cv._peaks=peaks;
+  }
+  c.drawImage(cv._bmp,0,0);
+  if(opts&&peaks){c.fillStyle='rgba(24,29,31,.72)';c.fillRect(0,0,opts.a*W,H);c.fillRect(opts.b*W,0,W-opts.b*W,H);
     c.strokeStyle='#b9e874';c.lineWidth=2*dpr;[opts.a,opts.b].forEach(f=>{c.beginPath();c.moveTo(f*W,0);c.lineTo(f*W,H);c.stroke()});
     if(opts.fi>0||opts.fo>0){c.strokeStyle='rgba(242,180,44,.9)';c.lineWidth=1.5*dpr;c.beginPath();c.moveTo(opts.a*W,H);c.lineTo((opts.a+opts.fi)*W,0);c.moveTo((opts.b-opts.fo)*W,0);c.lineTo(opts.b*W,H);c.stroke()}
     if(opts.ph!=null){c.fillStyle='#ffffff';c.fillRect(opts.ph*W-dpr,0,2*dpr,H)}}
@@ -935,10 +939,10 @@ $('recUse').onclick=()=>{if(!recPCM)return;takeStop();const d=new Date(),z=n=>St
 
 /* ---------- step 2: edit ---------- */
 const ec=$('editCtl');let edS,edE,edFi,edFo,editT=0;
-edS=ctlRow(ec,{label:'จุดเริ่ม',min:0,max:1,step:0.1,value:0,def:0,fmt:fmtT,onInput:v=>{if(v>edE.get()-0.5){edS.set(Math.max(0,edE.get()-0.5));v=edS.get()}E.start=v;drawEditWave()},onChange:()=>editChanged()});
-edE=ctlRow(ec,{label:'จุดจบ',min:0,max:1,step:0.1,value:1,fmt:fmtT,onInput:v=>{if(v<edS.get()+0.5){edE.set(edS.get()+0.5);v=edE.get()}E.end=v;drawEditWave()},onChange:()=>editChanged()});
-edFi=ctlRow(ec,{label:'เฟดเข้า',min:0,max:10,step:0.1,value:0,def:0,fmt:v=>v?v.toFixed(1)+' วิ':'ปิด',onInput:v=>{E.fadeIn=v;drawEditWave()},onChange:()=>editChanged()});
-edFo=ctlRow(ec,{label:'เฟดออก',min:0,max:10,step:0.1,value:0,def:0,fmt:v=>v?v.toFixed(1)+' วิ':'ปิด',onInput:v=>{E.fadeOut=v;drawEditWave()},onChange:()=>editChanged()});
+edS=ctlRow(ec,{label:'จุดเริ่ม',min:0,max:1,step:0.1,value:0,def:0,fmt:fmtT,onInput:v=>{if(v>edE.get()-0.5){edS.set(Math.max(0,edE.get()-0.5));v=edS.get()}E.start=v;soon('ew',drawEditWave)},onChange:()=>editChanged()});
+edE=ctlRow(ec,{label:'จุดจบ',min:0,max:1,step:0.1,value:1,fmt:fmtT,onInput:v=>{if(v<edS.get()+0.5){edE.set(edS.get()+0.5);v=edE.get()}E.end=v;soon('ew',drawEditWave)},onChange:()=>editChanged()});
+edFi=ctlRow(ec,{label:'เฟดเข้า',min:0,max:10,step:0.1,value:0,def:0,fmt:v=>v?v.toFixed(1)+' วิ':'ปิด',onInput:v=>{E.fadeIn=v;soon('ew',drawEditWave)},onChange:()=>editChanged()});
+edFo=ctlRow(ec,{label:'เฟดออก',min:0,max:10,step:0.1,value:0,def:0,fmt:v=>v?v.toFixed(1)+' วิ':'ปิด',onInput:v=>{E.fadeOut=v;soon('ew',drawEditWave)},onChange:()=>editChanged()});
 $('normBtn').onclick=()=>{E.norm=!E.norm;$('normBtn').setAttribute('aria-pressed',String(E.norm));editChanged()};
 edS.disable(true);edE.disable(true);
 function syncEditControls(){const d=pcmLen(orig)/orig.sr;edS.disable(false);edE.disable(false);edS.range(0,d);edE.range(0,d);edS.set(0);edE.set(d);E.fadeIn=Math.min(E.fadeIn,d/2);E.fadeOut=Math.min(E.fadeOut,d/2);edFi.set(E.fadeIn);edFo.set(E.fadeOut);$('editOrig').textContent='ต้นฉบับ '+fmtT0(d)}
@@ -959,14 +963,14 @@ function recomputeEdited(){
 
 /* ---------- step 3: tracks ---------- */
 let sepStrSl,semiSl,tempoSl,vSemiSl,vFormSl;
-sepStrSl=ctlRow($('sepCtl'),{label:'ความแรงในการแยก',min:0,max:100,step:5,value:60,def:60,fmt:v=>v+'%',hint:'มาก: เสียงร้องสะอาดขึ้นแต่บางลง · น้อย: เต็มกว่าแต่มีดนตรีปน',onInput:v=>{K.sepStr=v;afterTracksChange()}});
-semiSl=ctlRow($('keyCtl'),{label:'คีย์',min:-6,max:6,step:1,value:0,def:0,bipolar:true,fmt:v=>v===0?'เดิม':(v>0?'+':'−')+Math.abs(v)+' ครึ่งเสียง',hint:'+ สูงขึ้น · − ต่ำลง',onInput:v=>{K.semi=v;afterTracksChange()}});
-tempoSl=ctlRow($('keyCtl'),{label:'ความเร็ว',min:50,max:150,step:5,value:100,def:100,fmt:v=>v===100?'เดิม':v+'%',hint:'ช้าลงไว้ซ้อม เร็วขึ้นได้ เสียงไม่เพี้ยน',onInput:v=>{K.tempo=v;afterTracksChange()}});
+sepStrSl=ctlRow($('sepCtl'),{label:'ความแรงในการแยก',min:0,max:100,step:5,value:60,def:60,fmt:v=>v+'%',hint:'มาก: เสียงร้องสะอาดขึ้นแต่บางลง · น้อย: เต็มกว่าแต่มีดนตรีปน',onInput:v=>{K.sepStr=v;soon('trk',afterTracksChange)}});
+semiSl=ctlRow($('keyCtl'),{label:'คีย์',min:-6,max:6,step:1,value:0,def:0,bipolar:true,fmt:v=>v===0?'เดิม':(v>0?'+':'−')+Math.abs(v)+' ครึ่งเสียง',hint:'+ สูงขึ้น · − ต่ำลง',onInput:v=>{K.semi=v;soon('trk',afterTracksChange)}});
+tempoSl=ctlRow($('keyCtl'),{label:'ความเร็ว',min:50,max:150,step:5,value:100,def:100,fmt:v=>v===100?'เดิม':v+'%',hint:'ช้าลงไว้ซ้อม เร็วขึ้นได้ เสียงไม่เพี้ยน',onInput:v=>{K.tempo=v;soon('trk',afterTracksChange)}});
 const vbox=$('voices');
 VOICES.forEach(([id,name,,,sub])=>{const b=document.createElement('button');b.type='button';b.className='led';b.dataset.v=id;b.setAttribute('aria-pressed',String(id==='off'));b.innerHTML='<span></span><small></small>';b.querySelector('span').textContent=name;b.querySelector('small').textContent=sub;vbox.appendChild(b)});
 vbox.addEventListener('click',e=>{const b=e.target.closest('[data-v]');if(!b)return;const v=VOICES.find(x=>x[0]===b.dataset.v);K.voice=v[0];K.vSemi=v[2];K.vForm=v[3];vSemiSl.set(v[2]);vFormSl.set(v[3]);pressGroup(vbox,'data-v',K.voice);afterTracksChange()});
-vSemiSl=ctlRow($('voiceCtl'),{label:'ระดับเสียง',min:-12,max:12,step:1,value:0,def:0,bipolar:true,fmt:v=>v===0?'เดิม':(v>0?'+':'−')+Math.abs(v),hint:'สูงต่ำของเสียง',onInput:v=>{K.vSemi=v;if(K.voice!=='robot')K.voice='custom';pressGroup(vbox,'data-v',K.voice);afterTracksChange()}});
-vFormSl=ctlRow($('voiceCtl'),{label:'โทนเสียง',min:0.7,max:1.4,step:0.01,value:1,def:1,fmt:v=>Math.round(v*100)+'%',hint:'มากกว่า 100% เสียงเล็กแบบผู้หญิงหรือเด็ก · น้อยกว่า ใหญ่แบบผู้ชาย',onInput:v=>{K.vForm=v;if(K.voice!=='robot')K.voice='custom';pressGroup(vbox,'data-v',K.voice);afterTracksChange()}});
+vSemiSl=ctlRow($('voiceCtl'),{label:'ระดับเสียง',min:-12,max:12,step:1,value:0,def:0,bipolar:true,fmt:v=>v===0?'เดิม':(v>0?'+':'−')+Math.abs(v),hint:'สูงต่ำของเสียง',onInput:v=>{K.vSemi=v;if(K.voice!=='robot')K.voice='custom';pressGroup(vbox,'data-v',K.voice);soon('trk',afterTracksChange)}});
+vFormSl=ctlRow($('voiceCtl'),{label:'โทนเสียง',min:0.7,max:1.4,step:0.01,value:1,def:1,fmt:v=>Math.round(v*100)+'%',hint:'มากกว่า 100% เสียงเล็กแบบผู้หญิงหรือเด็ก · น้อยกว่า ใหญ่แบบผู้ชาย',onInput:v=>{K.vForm=v;if(K.voice!=='robot')K.voice='custom';pressGroup(vbox,'data-v',K.voice);soon('trk',afterTracksChange)}});
 $('sepBtn').onclick=()=>{K.sep=!K.sep;afterTracksChange()};
 function syncTrackControls(){sepStrSl.set(K.sepStr);semiSl.set(K.semi);tempoSl.set(K.tempo);vSemiSl.set(K.vSemi);vFormSl.set(K.vForm);pressGroup(vbox,'data-v',K.voice)}
 function afterTracksChange(){
@@ -986,8 +990,9 @@ function paintTracks(){
   if(!orig&&!isDefaultK()){st.textContent='ตั้งค่าไว้แล้ว จะประมวลผลเมื่อมีไฟล์';st.className='pill'}
   paintMixer();
 }
+let mixFor=null;
 function paintMixer(){
-  const box=$('mixer');box.innerHTML='';const P=current();if(!P||!P.sep)return;
+  const box=$('mixer');const P=current();const key=P&&P.sep?P:null;if(key===mixFor)return;mixFor=key;box.innerHTML='';if(!key)return;
   P.tracks.forEach(t=>{const d=document.createElement('div');d.className='trk';
     d.innerHTML='<span class="sw"></span><div class="nm"><b></b><span class="ms"><button type="button" class="led" data-m="mute">M</button><button type="button" class="led" data-m="solo">S</button></span></div><div></div>';
     d.querySelector('.sw').style.background=t.id==='vocal'?'var(--vocal)':'var(--music)';d.querySelector('b').textContent=t.label;
@@ -1041,12 +1046,12 @@ const CTL=[
   ['loudCtl','gain','ดังขึ้น',0,18,0.5,v=>'+'+v+' dB','มีตัวกันเสียงแตกที่ปลายทาง']
 ];
 let gateSl=null;
-CTL.forEach(([box,k,label,min,max,step,fmt,hint])=>{ctlSl[k]=ctlRow($(box),{label,min,max,step,value:T[k],def:PRESETS.flat[k],fmt,hint,onInput:v=>{T[k]=v;if(RT)applyTone(RT,T);highlight(null,null);drawCurve()}})});
+CTL.forEach(([box,k,label,min,max,step,fmt,hint])=>{ctlSl[k]=ctlRow($(box),{label,min,max,step,value:T[k],def:PRESETS.flat[k],fmt,hint,onInput:v=>{T[k]=v;soon('tone',()=>{if(RT)applyTone(RT,T);drawCurve()});highlight(null,null)}})});
 gateSl=ctlSl.gate;
 const eqSl=[];
 BANDS.forEach(([f,name],i)=>{const r=document.createElement('div');r.className='eqrow';r.innerHTML='<div class="lb"><b></b><small></small></div><div></div><output class="lcd"></output>';
   r.querySelector('b').textContent=fmtHz(f)+' Hz';r.querySelector('small').textContent=name;$('eqCtl').appendChild(r);
-  eqSl[i]=makeSlider(r.children[1],{label:fmtHz(f)+' Hz '+name,min:-12,max:12,step:0.5,value:T.eq[i],def:0,bipolar:true,out:r.querySelector('output'),fmt:v=>(v>0?'+':'')+v+' dB',onInput:v=>{T.eq[i]=v;if(RT)applyTone(RT,T);highlight(null,null);drawCurve()}})});
+  eqSl[i]=makeSlider(r.children[1],{label:fmtHz(f)+' Hz '+name,min:-12,max:12,step:0.5,value:T.eq[i],def:0,bipolar:true,out:r.querySelector('output'),fmt:v=>(v>0?'+':'')+v+' dB',onInput:v=>{T.eq[i]=v;soon('tone',()=>{if(RT)applyTone(RT,T);drawCurve()});highlight(null,null)}})});
 $('eqReset').onclick=()=>{T.eq=T.eq.map(()=>0);eqSl.forEach(s=>s.set(0));if(RT)applyTone(RT,T);highlight(null,null);drawCurve()};
 function applyValues(p){T=JSON.parse(JSON.stringify({hp:p.hp,hiss:p.hiss,gate:p.gate,comp:p.comp,gain:p.gain,eq:p.eq.slice(0,8)}));
   Object.keys(ctlSl).forEach(k=>ctlSl[k].set(T[k]));T.eq.forEach((g,i)=>eqSl[i].set(g));if(RT)applyTone(RT,T);drawCurve()}
@@ -1097,7 +1102,7 @@ function drawCurve(){
   tot.fill(1);[RT.hp,RT.hp2,RT.hiss,...RT.eq].forEach(n=>{n.getFrequencyResponse(freqs,magR,phR);for(let i=0;i<NP;i++)tot[i]*=magR[i]});
   const pts=[];for(let i=0;i<NP;i++)pts.push([x(freqs[i]),y(Math.max(-18,Math.min(18,20*Math.log10(tot[i]||1e-6))))]);
   cx.beginPath();pts.forEach((p,i)=>i?cx.lineTo(p[0],p[1]):cx.moveTo(p[0],p[1]));cx.lineTo(W,y(0));cx.lineTo(0,y(0));cx.closePath();cx.fillStyle='rgba(140,198,63,.20)';cx.fill();
-  cx.beginPath();pts.forEach((p,i)=>i?cx.lineTo(p[0],p[1]):cx.moveTo(p[0],p[1]));cx.strokeStyle='#8cc63f';cx.lineWidth=2*d;cx.shadowColor='#8cc63f';cx.shadowBlur=6*d;cx.stroke();cx.shadowBlur=0;
+  cx.beginPath();pts.forEach((p,i)=>i?cx.lineTo(p[0],p[1]):cx.moveTo(p[0],p[1]));cx.strokeStyle='#8cc63f';cx.lineWidth=2*d;cx.stroke();
 }
 window.addEventListener('resize',()=>{if(page==='tone'){sizeCurve();drawCurve()}if(page==='edit')drawEditWave();if(page==='load')drawLoadWave()});
 
@@ -1224,13 +1229,14 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('guide').hidden)
 /* ---------- live loop: time, meters, curve ---------- */
 const tb=new Float32Array(1024);
 function peak(an){an.getFloatTimeDomainData(tb);let m=0;for(let i=0;i<tb.length;i++){const a=Math.abs(tb[i]);if(a>m)m=a}return m}
-let lastDur=-1;
+let lastDur=-1,lastShown=-1,lastTxt='',metersOn=false;
 function loop(){
   const d=curDur();if(d!==lastDur){seekSl.range(0,Math.max(0.1,d));$('tDur').textContent=fmtT0(d);lastDur=d}
-  const p=plPos();if(!seekSl.el.classList.contains('active')){seekSl.set(Math.min(p,d));$('tNow').textContent=fmtT0(p)}
-  if(PL.playing){[[anL,$('mL')],[anR,$('mR')]].forEach(([an,el])=>{const db=20*Math.log10(peak(an)||1e-6);el.style.clipPath='inset('+(100-Math.max(0,Math.min(100,(db+60)/60*100)))+'% 0 0 0)'});
+  const p=Math.min(plPos(),d);
+  if(!seekSl.el.classList.contains('active')){const q=Math.round(p*10)/10;if(q!==lastShown){seekSl.set(q);lastShown=q}const t=fmtT0(p);if(t!==lastTxt){$('tNow').textContent=t;lastTxt=t}}
+  if(PL.playing){metersOn=true;[[anL,$('mL')],[anR,$('mR')]].forEach(([an,el])=>{const db=20*Math.log10(peak(an)||1e-6);el.style.clipPath='inset('+(100-Math.max(0,Math.min(100,(db+60)/60*100)))+'% 0 0 0)'});
     if(page==='tone')drawCurve();if(page==='edit')drawEditWave()}
-  else{$('mL').style.clipPath=$('mR').style.clipPath='inset(100% 0 0 0)'}
+  else if(metersOn){metersOn=false;$('mL').style.clipPath=$('mR').style.clipPath='inset(100% 0 0 0)'}
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
